@@ -1,18 +1,19 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from .models import CustomUser
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordChangeForm
+from .models import CustomUser, Membership
 from django.contrib.auth import get_user_model
 
-#User Creation Form
+# User Creation Form
 class CustomUserCreationForm(UserCreationForm):
-    role = forms.ChoiceField(choices=CustomUser.USER_ROLES)
-    first_name = forms.CharField(max_length=150, required=True)
-    last_name = forms.CharField(max_length=150, required=True)
-    is_admin = forms.BooleanField(required=False, label="Register as Admin")
+    role = forms.ChoiceField(choices=CustomUser.USER_ROLES, widget=forms.Select(attrs={"class": "form-select"}))
+    first_name = forms.CharField(max_length=150, required=True,
+                                  widget=forms.TextInput(attrs={"class": "form-control"}))
+    last_name = forms.CharField(max_length=150, required=True,
+                                widget=forms.TextInput(attrs={"class": "form-control"}))
 
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'first_name', 'last_name', 'is_admin')
+        fields = ('username', 'email', 'first_name', 'last_name', 'role')
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -23,26 +24,23 @@ class CustomUserCreationForm(UserCreationForm):
         if commit:
             user.save()
         return user
-    
+
+# User Authentication Form
 class CustomAuthenticationForm(AuthenticationForm):
-    class Meta: 
+    class Meta:
         model = get_user_model()
 
-#User Edit form (Admin)
+# User Edit Form (Admin)
 class UserEditForm(forms.ModelForm):
     role = forms.ChoiceField(
         choices=CustomUser.USER_ROLES,
         widget=forms.Select(attrs={"class": "form-select"})
     )
-    membership_status = forms.ChoiceField(
-        choices=CustomUser.MEMBERSHIP_CHOICES,
-        widget=forms.Select(attrs={"class": "form-select"})
-    )
-    is_admin = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={"class": "form-check-input"}))
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'first_name', 'last_name', 'role','membership_status', 'is_admin']
+        fields = ['username', 'email', 'first_name', 'last_name', 'role']
+
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
@@ -52,11 +50,66 @@ class UserEditForm(forms.ModelForm):
 
 # Add User Form (Admins)
 class AddUserForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput, required=True)
+    password = forms.CharField(widget=forms.PasswordInput(attrs={"class": "form-control"}), required=True)
+    role = forms.ChoiceField(choices=CustomUser.USER_ROLES, widget=forms.Select(attrs={"class": "form-select"}))
 
     class Meta:
         model = CustomUser
         fields = ['first_name', 'last_name', 'username', 'email', 'role', 'password']
+
         widgets = {
-            'role': forms.Select(choices=CustomUser.USER_ROLES),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
         }
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if commit:
+            user.set_password(self.cleaned_data['password'])
+            user.save()
+        return user
+
+class MembershipForm(forms.ModelForm):
+    class Meta:
+        model = Membership
+        fields = ["user", "membership_type", "auto_renew"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['user'].queryset = CustomUser.objects.all()  # Show all users
+        self.fields['membership_type'].widget = forms.RadioSelect(choices=Membership.TIER_CHOICES)
+        self.fields['auto_renew'].widget = forms.CheckboxInput()
+
+    def clean_membership_type(self):
+        membership_type = self.cleaned_data.get('membership_type')
+        if membership_type not in dict(Membership.TIER_CHOICES):
+            raise forms.ValidationError("Invalid membership type selected.")
+        return membership_type
+
+class UserProfileEditForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ['first_name', 'last_name', 'email']  # Removed role field
+
+    password_change_form = PasswordChangeForm
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.password_form = self.password_change_form(user=self.instance)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.password_form.cleaned_data.get('new_password1'):
+            if not self.password_form.is_valid():
+                raise forms.ValidationError(self.password_form.errors)
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if self.password_form.cleaned_data.get('new_password1'):
+            user.set_password(self.password_form.cleaned_data['new_password2'])
+        if commit:
+            user.save()
+        return user

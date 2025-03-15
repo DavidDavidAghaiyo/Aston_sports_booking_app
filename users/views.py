@@ -1,17 +1,21 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
-from .forms import CustomUserCreationForm, CustomAuthenticationForm
+from .forms import CustomUserCreationForm, CustomAuthenticationForm,UserEditForm, AddUserForm, MembershipForm, UserProfileEditForm
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.contrib import messages
 from django.db.models import Sum
 from django.http import HttpResponse
-from users.models import CustomUser
-from bookings.models import Booking
+from users.models import CustomUser,Membership
+from bookings.models import Booking, Activity
 from payments.models import Payment
 from promotions.models import Promotion
 import csv
 import xlwt
-from .forms import UserEditForm, AddUserForm
+from django.utils import timezone
+from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+
+
 
 
 # User Register View
@@ -51,7 +55,7 @@ def user_login(request):
             if user is not None:
                 login(request, user)
                 messages.success(request, "Login Successful!")
-            if user.is_admin:
+            if user.is_superuser or user.is_staff:
                 return redirect('admin_dashboard')
             else:
                 return redirect('home')  # Redirect to the home page
@@ -77,29 +81,38 @@ def admin_dashboard(request):
     # Fields that admin can manage on the admin dashboard
     total_users = CustomUser.objects.count()
     total_bookings = Booking.objects.count()
-    total_payments = Payment.objects.aggregate(total_amount=Sum('amount'))['total_amount'] or 0
-    active_promotions = Promotion.objects.filter(is_active = True).count()
 
-    # Displaying at least 5 latest records from the database 
+ # Calculate total payments from bookings
+    activity_payments = Payment.objects.aggregate(total=Sum('amount'))['total'] or 0
+
+    # Calculate payments from memberships
+    membership_payments = Membership.objects.aggregate(total=Sum('price'))['total'] or 0
+
+    # Calculate total payments
+    total_payments = activity_payments + membership_payments
+
+    active_promotions = Promotion.objects.filter(is_active=True).count()
+
+    # Displaying at least 5 latest records from the database
     latest_bookings = Booking.objects.order_by('-date', '-time')[:5]
+    print("Admin Dashboard Latest Bookings:", latest_bookings)  # Debugging line
     latest_payments = Payment.objects.order_by('-date')[:5]
     active_promo_list = Promotion.objects.filter(is_active=True).order_by('-start_date')[:5]
 
     # Displaying recent activity (recent users, bookings...etc)
     recent_users = CustomUser.objects.order_by('-date_joined')[:5]
     recent_bookings = Booking.objects.order_by('-date')[:5]
-    recent_payments = Payment.objects.order_by('-date')[:5]
+    recent_payments = Payment.objects.prefetch_related('booking__user', 'booking__activity').order_by('-date')[:5]
 
+    print("Total Bookings:", total_bookings)
 
-    #Implementing search queries
+    # Implementing search queries
     query = request.GET.get('q', '')
     search_results = {
         'users': CustomUser.objects.filter(username__icontains=query) if query else [],
         'bookings': Booking.objects.filter(user__username__icontains=query) if query else [],
         'promotions': Promotion.objects.filter(code__icontains=query) if query else [],
     }
-
-
 
     context = {
         'total_users': total_users,
@@ -114,9 +127,8 @@ def admin_dashboard(request):
         'recent_payments': recent_payments,
         'search_results': search_results,
         'query': query,
-
     }
-    return render(request, 'users/admin_dashboard.html', context) # Passing the data from the database onto the admin dashboard
+    return render(request, 'users/admin_dashboard.html', context)  # Passing the data from the database onto the admin dashboard
 
 # Implementing the export data as CSV feature
 def export_users_csv(request):
@@ -244,7 +256,11 @@ def add_user(request):
 @login_required
 def view_user(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id)
-    context = {'user': user}
+    try:
+        membership = Membership.objects.get(user=user)
+    except Membership.DoesNotExist:
+        membership = None
+    context = {'user': user, 'membership': membership}
     return render(request, 'users/view_user.html', context)
 
 #Delete User View
@@ -264,3 +280,75 @@ def delete_user(request, user_id):
                
                 }
     return render(request, 'users/delete_user.html', context)
+
+# List all memberships
+class MembershipListView(ListView):
+    model = Membership
+    template_name = "memberships/membership_list.html"
+    context_object_name = "memberships"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['users'] = CustomUser.objects.all()  # Retrieve all users
+        context['form'] = MembershipForm()
+        return context
+
+
+# Create a new membership
+class MembershipCreateView(CreateView):
+    model = Membership
+    form_class = MembershipForm
+    template_name = "memberships/membership_form.html"
+    success_url = reverse_lazy("membership_list")  # Ensure this is correct
+
+
+# Edit a membership
+class MembershipUpdateView(UpdateView):
+    model = Membership
+    form_class = MembershipForm
+    template_name = "memberships/membership_form.html"
+    success_url = reverse_lazy("membership_list")
+
+    def get_initial(self):
+        # Set the initial user value from the URL parameter
+        initial = super().get_initial()
+        initial['user'] = self.object.user.pk  # Get user from existing Membership
+        return initial
+
+
+    def form_valid(self, form):
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('membership_list')
+
+
+# Delete a membership
+class MembershipDeleteView(DeleteView):
+    model = Membership
+    template_name = "memberships/membership_confirm_delete.html"
+    success_url = reverse_lazy("membership_list")
+
+
+def membership_list(request):
+    active_memberships = Membership.objects.filter(status="Active")
+    expired_memberships = Membership.objects.filter(status="Expired")
+
+    return render(
+        request,
+        "memberships/membership_list.html",
+        {"active_memberships": active_memberships, "expired_memberships": expired_memberships},
+    )
+
+@login_required
+def user_profile_edit(request):
+    user = request.user
+    if request.method == "POST":
+        form = UserProfileEditForm(request.POST, instance=user)  # Use the new form
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your profile has been updated!")
+            return redirect('user_dashboard')  # Or wherever you want to redirect
+    else:
+        form = UserProfileEditForm(instance=user)  # Use the new form
+    return render(request, "users/user_profile_edit.html", {"form": form})

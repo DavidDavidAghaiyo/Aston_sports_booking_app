@@ -211,6 +211,7 @@
             border-bottom: 1px solid #ddd;
         }
     </style>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
 </head>
 
 <body>
@@ -280,7 +281,7 @@
         <!-- Total Payments -->
         <div class="dashboard-box">
             <h3>Total Payments</h3>
-            <p>${{ total_payments|floatformat:2 }}</p>
+            <p>£{{ total_payments|floatformat:2 }}</p>
         </div>
 
         <!-- Active Promotions -->
@@ -301,18 +302,23 @@
         <a href="{% url 'booking_list' %}" class="action-button">Manage Bookings</a
       >
 
-      <!-- Button to Modify Promotions -->
-      <a
-        href="{% url 'admin:promotions_promotion_changelist' %}"
-        class="action-button"
-      >
-        Modify Promotions</a
-      >
+      <!-- Button to Manage Promotions -->
+        <a href="{% url 'promotion_list' %}" class="action-button">Manage Promotions</a>
 
-      <!--Button to Manage Activities-->
+        <!--Button to Manage Activities-->
 
-      <a href="{% url 'activity_list' %}" class="action-button">Manage Activities</a>
+        <a href="{% url 'activity_list' %}" class="action-button">Manage Activities</a>
+
+        <!--Button for the calendar-->
+
+        <a href="{% url 'calendar' %}" class="action-button">Calendar</a>
+
+        <!--Button to manage members-->
+
+        <a href="{% url 'membership_list' %}" class="action-button">Members</a>
     </div>
+
+
 
     <!--Latest Activities Section-->
     <div class="latest-activities">
@@ -346,18 +352,22 @@
         <table>
             <tr>
                 <th>User</th>
+                <th>Activity</th>
                 <th>Amount</th>
                 <th>Date</th>
             </tr>
-            {% for payment in latest_payments %}
+            {% for payment in recent_payments %}
             <tr>
-                <td>{{ payment.user.username }}</td>
-                <td>${{ payment.amount }}</td>
-                <td>{{ payment.date }}</td>
+                <td>{{ payment.booking.user.username }}</td>
+                <td>
+                    {% if payment.booking %} {{ payment.booking.activity.name }} {% else %} N/A {% endif %}
+                </td>
+                <td>£{{ payment.amount|floatformat:2 }}</td>
+                <td>{{ payment.date|date:"Y-m-d H:i" }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="3">No recent payments</td>
+                <td colspan="4">No recent payments</td>
             </tr>
             {% endfor %}
         </table>
@@ -417,7 +427,7 @@
             <ul>
                 {% for payment in recent_payments %}
                 <li>
-                    {{ payment.user.username }} - ${{ payment.amount }} on {{ payment.date }}
+                    {{ payment.booking.user.username }} - £{{ payment.amount }} for {{ payment.booking.activity.name }} on {{ payment.date }}
                 </li>
                 {% empty %}
                 <li>No new payments.</li>
@@ -447,6 +457,10 @@
     ><br />
 
     <a href="{% url 'logout' %}" class="logout-btn">Logout</a> {% endblock %}
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@5.11.3/main.min.js"></script>
 </body>
 
 </html>
