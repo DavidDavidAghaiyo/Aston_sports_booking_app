@@ -1,0 +1,141 @@
+{% load custom_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Membership Plans | Aston Sports Booking</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .hero-section {
+            background: url('https://images.pexels.com/photos/399187/pexels-photo-399187.jpeg?auto=compress&cs=tinysrgb&w=1600') center/cover no-repeat;
+            color: white;
+            text-align: center;
+            padding: 100px 20px;
+            font-weight: bold;
+            box-shadow: inset 0 0 0 2000px rgba(0, 0, 0, 0.4);
+        }
+        
+        .hero-section h1 {
+            font-size: 2.8rem;
+        }
+        
+        .hero-section p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: auto;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+            transition: background 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            margin-top: 50px;
+            background-color: #343a40;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">Aston Sports Booking</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'activity_list_user' %}">Activities</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'membership_plans' %}">Memberships</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'promotions' %}">Promotions</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'about' %}">About Us</a></li>
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'user_dashboard' %}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'user_profile_edit' %}">Profile</a></li>
+                    <li class="nav-item"><a class="nav-link btn btn-danger text-white px-3" href="{% url 'logout' %}">Logout</a></li>
+                    {% else %}
+                    <li class="nav-item"><a class="nav-link btn btn-primary text-white px-3" href="{% url 'login' %}">Login</a></li>
+                    <li class="nav-item"><a class="nav-link btn btn-success text-white px-3" href="{% url 'register' %}">Register</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <h1>Join the Aston Sports Community</h1>
+        <p>Unlock exclusive access to premium facilities, priority bookings, and member-only events.</p>
+    </div>
+
+    <!-- Membership Plans Section -->
+    <div class="container my-5">
+        <h2 class="text-center mb-4">Choose Your Membership Plan</h2>
+        <p class="text-center text-muted">Whether you're a casual player or a dedicated athlete, we have the perfect plan for you.</p>
+
+        <div class="row">
+            {% for tier, _ in membership_tiers %}
+            <div class="col-md-4">
+                <div class="card mb-4 text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ tier }}</h5>
+                        {% with membership=membership_details|get_item:tier %} {% if membership %}
+                        <p class="card-text"><strong>Price:</strong> £{{ membership.price }}</p>
+                        <p><strong>Duration:</strong> {{ membership.duration.days }} days</p>
+                        <p class="text-muted">Enjoy exclusive benefits with our {{ tier }} membership.</p>
+                        <a href="{% url 'user_membership_signup' tier=tier %}" class="btn btn-primary w-100">Sign Up Now</a> {% else %}
+                        <p class="text-muted">Details not available for {{ tier }} membership.</p>
+                        {% endif %} {% endwith %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>© 2025 Aston Sports Booking. All rights reserved.</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>
