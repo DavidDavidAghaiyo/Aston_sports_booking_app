@@ -4,6 +4,7 @@ from .forms import CustomUserCreationForm, CustomAuthenticationForm,UserEditForm
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.contrib import messages
 from django.db.models import Sum
+from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from users.models import CustomUser,Membership, Review
 from bookings.models import Booking, Activity
@@ -15,6 +16,10 @@ from django.utils import timezone
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from datetime import date, timedelta
+from .models import ChatbotMessage
+from django.http import JsonResponse
+import json
+
 
 
 
@@ -277,7 +282,7 @@ def delete_user(request, user_id):
                'last_name': user.last_name,
                'email': user.email,
                'username': user.username,
-               'membership_status': user.membership_status,
+               
                
                 }
     return render(request, 'users/delete_user.html', context)
@@ -430,3 +435,25 @@ def admin_required(user):
 def admin_reviews(request):
     reviews = Review.objects.all().order_by('-created_at')
     return render(request, 'users/admin_reviews.html', {'reviews': reviews})
+
+
+@csrf_exempt
+@login_required
+def save_chatbot_message(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        message = data.get("message")
+        if message:
+            ChatbotMessage.objects.create(user=request.user, message=message)
+            return JsonResponse({"status": "success"})
+        else:
+            return JsonResponse({"status": "error", "message": "Message is required"})
+    else:
+        return JsonResponse({"status": "error", "message": "Invalid request method"})
+    
+
+@login_required
+@user_passes_test(admin_required) 
+def chatbot_messages(request):
+    messages = ChatbotMessage.objects.all().order_by('-timestamp')
+    return render(request, 'bookings/chatbot_messages.html', {'messages': messages})

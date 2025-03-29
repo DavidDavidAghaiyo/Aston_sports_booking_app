@@ -18,6 +18,8 @@ from django.core.mail import send_mail
 
 #Homepage
 def home(request):
+    reviews = Review.objects.all()  # Retrieve all reviews from the database
+
     if request.method == 'POST':
         form = ReviewForm(request.POST)
         if form.is_valid():
@@ -27,7 +29,8 @@ def home(request):
             return redirect('home')  # Redirect to the same page to clear the form
     else:
         form = ReviewForm()
-    return render(request, 'bookings/home.html', {'form': form}) 
+
+    return render(request, 'bookings/home.html', {'form': form, 'reviews': reviews})
 
 #Booking List View
 class BookingListView(ListView):
@@ -73,12 +76,14 @@ class BookingCreateView(CreateView):
 
         return response
 
-#Booking Create View (Update/Edit)
+#Booking (Update/Edit)  View 
 class BookingUpdateView(UpdateView):
     model = Booking
     form_class = BookingForm
     template_name = 'bookings/booking_form.html'
     success_url = reverse_lazy('booking_list')
+
+    
 
 #Booking Confirm Delete View
 class BookingDeleteView(DeleteView):
@@ -170,7 +175,7 @@ def calendar_view(request):
             "color": "#28a745" if booking.status == "confirmed" else "#ff0000" if booking.status == "cancelled" else "#ffc107",  # Customize color based on status
         })
 
-    print("Events JSON:", json.dumps(events))  # Debugging output
+   
 
     return render(request, "users/calendar.html", {"events": json.dumps(events)})
 

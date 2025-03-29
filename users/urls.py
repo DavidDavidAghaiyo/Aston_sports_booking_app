@@ -1,7 +1,9 @@
 from django.urls import path
 from . import views
 from bookings.views import home, calendar_view
-from .views import register, user_login, user_logout, admin_dashboard, export_users_csv, export_bookings_csv, export_payments_csv, export_users_excel, user_list, edit_user, add_user, view_user, delete_user, MembershipListView, MembershipUpdateView, MembershipCreateView, MembershipDeleteView, user_profile_edit, membership_plans, admin_reviews
+from .views import register, user_login, user_logout, admin_dashboard, export_users_csv, export_bookings_csv, export_payments_csv, export_users_excel, user_list, edit_user, add_user, view_user, delete_user, MembershipListView, MembershipUpdateView, MembershipCreateView, MembershipDeleteView, user_profile_edit, membership_plans, admin_reviews, chatbot_messages, save_chatbot_message
+
+
 
 urlpatterns = [
     path('', home, name='home'),  
@@ -28,6 +30,8 @@ urlpatterns = [
     path('membership/signup/<str:tier>/', views.user_membership_signup, name='user_membership_signup'),
     path('promotions/', views.promotions, name='promotions'),
     path('admin/reviews/', views.admin_reviews, name='admin_reviews'),
+      path('save_chatbot_message/', views.save_chatbot_message, name='save_chatbot_message'),
+    path('chatbot_messages/', views.chatbot_messages, name='chatbot_messages'),
     
     
 ]

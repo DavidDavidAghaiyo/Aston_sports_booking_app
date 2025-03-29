@@ -18,4 +18,6 @@ urlpatterns = [
     path('process_payment/<int:booking_id>/', process_payment, name='process_payment'),
     path('about/', about, name='about'),
     path('user-activities/', activity_list_user, name='activity_list_user'),
+    
 ]
+
