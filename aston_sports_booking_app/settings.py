@@ -150,9 +150,3 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Gmail SMTP server
-EMAIL_PORT = 587  # Port for TLS
-EMAIL_HOST_USER = 'astonsportsbook@gmail.com'  # Gmail address
-EMAIL_HOST_PASSWORD = 'your_app_password'  #  Gmail App Password
-EMAIL_USE_TLS = True  # Use TLS
